@@ -1,0 +1,25 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"
+    import="java.sql.*" import="de.fs.webarch.server.rest.*"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Hausaufgabe abgeben</title>
+</head>
+<body>
+	<% Connection con = null; try {con = ContextListener.getDataSource().getConnection();} catch(SQLException e) {response.sendError(503); return;} %>
+	<% if(request.getParameter("par") == null) { %> <jsp:forward page="index.jsp" /> <% } %>
+	<jsp:include page="navbar.jsp"/>
+	<h1>Bitte Geben Sie Ihren Lösungstext ein</h1>
+	<% int par = Integer.parseInt(request.getParameter("par"));
+		int id = Integer.parseInt(session.getAttribute("loggedInUserID").toString()); %>
+	<h2>Dies ist ihre <%= AbgabeDao.instance.getAttempt(par, id) %>. Abgabe</h2>
+	<form action="UploadHomeworkServlet" method="post">
+		<textarea name="loesung" rows=30 cols=200></textarea>	
+		<input type="hidden" name="h_id" value="<%= request.getParameter("par") %>">
+		<input type="submit" value="Abgeben"> 
+	</form>
+	<% con.close(); %>
+</body>
+</html>

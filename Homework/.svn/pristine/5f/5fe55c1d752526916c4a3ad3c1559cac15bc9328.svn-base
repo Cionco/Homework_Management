@@ -1,0 +1,61 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.net.URLDecoder;
+import java.sql.ResultSet;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Servlet implementation class NewHomeworkServlet
+ */
+public class NewHomeworkServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public NewHomeworkServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {		
+		//-----------------------------------------------------------------------------------------------
+		//						Flip Locked Bit for handing in Homework
+		//-----------------------------------------------------------------------------------------------
+		String sql = "SELECT Open FROM Hausaufgabe WHERE h_id = " + request.getParameter("par") + ";";
+		int open = DBSupport.getFirstInt(sql);
+		
+		open = open ^ 1;
+		sql = "UPDATE Hausaufgabe SET Open = " + open + " WHERE h_id = " + request.getParameter("par") + ";";
+		ContextListener.executeUpdate(sql);
+		response.sendRedirect("/DynWebProject/Homework/");
+		
+		//response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		response.getWriter().append(request.getParameter("title") + ", " + request.getParameter("beschreibung") +", " + request.getParameter("Abgabedatum") + ", " + request.getParameter("locked"));
+		
+		//-----------------------------------------------------------------------------------------------
+		//						Create DB Entry for table `Hausaufgabe`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "INSERT INTO Hausaufgabe(Titel, Beschreibung, AbgabeTermin, Open, k_id) VALUES('" +  request.getParameter("title") + "', '" + request.getParameter("beschreibung") + "', '" + 
+				request.getParameter("Abgabedatum") + "', " + ((request.getParameter("locked") == null)?1:0) + ", " + request.getParameter("kurs") + ");";
+		ContextListener.execute(sql);
+		
+		response.sendRedirect("/DynWebProject/Homework/");
+	}
+
+}

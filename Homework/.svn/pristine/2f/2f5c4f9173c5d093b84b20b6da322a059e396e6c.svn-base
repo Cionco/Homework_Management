@@ -1,0 +1,116 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+/**
+ * Servlet implementation class SqlConsoleServlet
+ */
+@WebServlet("/SqlConsoleServlet")
+public class SqlConsoleServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+	private final String CONSTRUCT = "<html><body onload=\"document.console.input.focus();\">"
+			+ "<form name=\"console\" action=\"SqlConsoleServlet\" method=\"post\">"
+			+ "<div><textarea rows=20 cols=100 readonly></textarea></div>"
+			+ "<div><input type=\"text\" style=\"width: 1000px;\" name=\"input\" id=\"input\"><input hidden type=\"submit\" value=\"cmd\"></div></form></body></html>";
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public SqlConsoleServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		if(!session.getAttribute("usergroup").toString().equals("4")) response.sendRedirect("index.html");
+		request.getRequestDispatcher("navbar.jsp").include(request, response);
+		write(CONSTRUCT, response);
+		//response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		request.getRequestDispatcher("navbar.jsp").include(request, response);
+		String cmd = (String) request.getParameter("input");
+		
+		String output = null;
+		if(cmd.toUpperCase().startsWith("SELECT")) {
+			write(swapAreaForTable(buildRSTable(cmd)), response);
+		} else {
+			int changes = ContextListener.executeUpdate(cmd);
+			if(changes == -1)
+				output = "Fehler in der Anweisung";
+			else	
+				output = "Anweisung ausgeführt. " + changes + " Zeilen wurden geändert";
+			write(initializedConstruct(output), response);
+		}
+	}
+
+	private String buildRSTable(String cmd) {
+		String table = "";
+		ResultSet rs = ContextListener.executeQuery(cmd);
+		try {
+				
+			ResultSetMetaData rsmd = rs.getMetaData();
+			table += "<table><tr>";
+			for(int i = 1; i <= rsmd.getColumnCount(); i++) {
+				table += "<th>" + rsmd.getColumnName(i) + "</th>";
+			}
+			table += "</tr>";
+			while(rs.next()) {
+				table += "<tr>";
+				for(int i = 1; i <= rsmd.getColumnCount(); i++) table += "<td>" + rs.getString(i) + "</td>";
+				table += "</tr>";
+			}
+			table += "</table>";
+		} catch (SQLException e) {
+			e.printStackTrace();
+			table = e.toString();
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return table;
+	}
+	
+	private void write(String html, HttpServletResponse response) throws IOException {
+		response.getWriter().append(html);
+	}
+	
+	private String initializedConstruct(String content) {
+		String construct = CONSTRUCT;
+		
+		return insertAfter(content, "readonly>", construct);
+	}
+	
+	private String insertAfter(String insert, String after, String into) {
+		String[] split = into.split(after);
+		return split[0] + after + insert + split[1];
+	}
+	
+	private String swapAreaForTable(String table) {
+		String construct = CONSTRUCT;
+		return construct.replaceAll("<textarea rows=20 cols=100 readonly></textarea>", table);
+	}
+
+}

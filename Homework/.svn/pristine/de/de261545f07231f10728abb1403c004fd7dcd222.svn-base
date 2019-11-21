@@ -1,0 +1,9 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"%>
+<table><tr>
+<td><a href="status.jsp">Status</a> | </td>
+<td><a href="portallist.jsp">Portal Liste</a> | </td>
+<td><a href="rest/portals">Portal Liste (XML)</a> | </td>
+<td><a href="portal_form.jsp">Neues Portal</a> | </td>
+<td><a href="index.jsp">Hauptseite</a> | </td>
+</tr></table>

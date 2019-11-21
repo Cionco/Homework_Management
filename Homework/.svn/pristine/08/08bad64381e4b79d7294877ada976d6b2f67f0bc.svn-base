@@ -1,0 +1,86 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.net.URLDecoder;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Servlet implementation class NewHomeworkServlet
+ */
+public class NewHomeworkServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public NewHomeworkServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {	
+		Connection con = (Connection) request.getSession().getAttribute("connection");
+		//-----------------------------------------------------------------------------------------------
+		//						Flip Locked Bit for handing in Homework
+		//-----------------------------------------------------------------------------------------------
+		int open = DBSupport.getFirstInt(DBSupport.getPreparedStatementFromSql("SELECT Open FROM Hausaufgabe WHERE h_id = ?;", new String[] {request.getParameter("par")}, con));
+		
+		open = open ^ 1;
+		PreparedStatement ps = DBSupport.getPreparedStatementFromSql("UPDATE Hausaufgabe SET Open = ? WHERE h_id = ?;", new String[]{Integer.toString(open), request.getParameter("par")}, con);
+		try {
+			ps.executeUpdate();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		response.sendRedirect("/DynWebProject/Homework/");
+		
+		//response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		response.getWriter().append(request.getParameter("title") + ", " + request.getParameter("beschreibung") +", " + request.getParameter("Abgabedatum") + ", " + request.getParameter("locked"));
+		Connection con = (Connection) request.getSession().getAttribute("connection");
+		//-----------------------------------------------------------------------------------------------
+		//						Create DB Entry for table `Hausaufgabe`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "INSERT INTO Hausaufgabe(Titel, Beschreibung, AbgabeTermin, Open, k_id) VALUES(?, ?, ?, ?, ?);";
+		String[] params = new String[] {request.getParameter("title"), request.getParameter("beschreibung"), request.getParameter("Abgabedatum"), ((request.getParameter("locked") == null)?"1":"0"), request.getParameter("kurs")};
+		PreparedStatement ps = DBSupport.getPreparedStatementFromSql(sql, params, con);
+		try {
+			ps.execute();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		response.sendRedirect("/DynWebProject/Homework/");
+	}
+
+}

@@ -1,0 +1,50 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Servlet implementation class AssessServlet
+ */
+public class AssessServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public AssessServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		// TODO Auto-generated method stub
+		response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		//-----------------------------------------------------------------------------------------------
+		//							Save assessment to DB
+		//-----------------------------------------------------------------------------------------------
+		String sql = "UPDATE Abgabe SET Anmerkung = '" + request.getParameter("comments") + "', Punkte = " + request.getParameter("score")
+					+ " WHERE a_id = " + request.getParameter("id") + ";";
+		ContextListener.executeUpdate(sql);
+		
+		
+		sql = "SELECT h_id FROM Abgabe WHERE a_id = " + request.getParameter("id") + ";";
+		int h_id = DBSupport.getFirstInt(sql);
+		
+		response.sendRedirect("index.jsp?par=" + h_id);
+	}
+
+}

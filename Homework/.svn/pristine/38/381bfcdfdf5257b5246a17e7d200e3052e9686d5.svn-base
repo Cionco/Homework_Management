@@ -1,0 +1,49 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"
+    import="java.sql.*" import="org.apache.commons.*"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Neues Fach/Vorlesung</title>
+</head>
+<body>
+	<jsp:include page="navbar.jsp"/>
+	<% boolean newone = request.getParameter("par") == null; 
+		int par = !newone?Integer.parseInt(request.getParameter("par")):-1; %>
+	<h1><%= newone?"Neues Fach/Vorlesung":"Kurs Info ändern" %></h1>
+	<h2>Bitte geben Sie dem Kurs einen Namen und fügen Sie Teilnehmer hinzu</h2>
+	<%  Integer[] teilnehmer = new Integer[0];
+		String[] kurs = new String[0];
+		if(!newone) {
+			kurs = DBSupport.getKursProperties(par);
+			teilnehmer = DBSupport.getKursTeilnehmer(par);
+		}%>
+	<form method="post" action="SetupSubjectServlet<%= !newone?("?par=" + par):""%>">
+		<div>
+			<input type="text" placeholder="Kürzel" name="abb" value="<%= !newone?kurs[0]:"" %>"/>
+			<input type="text" placeholder="Titel" name="title" value="<%= !newone?kurs[1]:"" %>"/>
+		</div>
+		<div class="teilnehmer-liste">
+			<% int i = 0;
+				String check = "";
+				for(String name : DBSupport.getNames()) { 
+					check = "";
+					
+					String[] split = name.split(", ");
+						if(!newone && i < teilnehmer.length) if(DBSupport.contains(teilnehmer, Integer.parseInt(split[0]))) {
+							check = "checked";
+							i++;
+						}	
+					%>
+					<div class="teilnehmer"><input type="checkbox" value="<%= split[0] %>" name="names" <%= check %>><%= split[1] + ", " + split[2] %></input></div>
+	
+			<% } %>
+		</div>
+		<div class="submit-section">
+			<input type="submit" value="<%= (request.getParameter("par") == null)?"Erstellen":"Ändern" %>"/>
+		</div>
+	</form>
+
+</body>
+</html>

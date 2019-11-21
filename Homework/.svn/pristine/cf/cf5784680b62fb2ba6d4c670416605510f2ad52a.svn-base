@@ -1,0 +1,122 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Servlet implementation class SetupSubjectServlet
+ */
+public class SetupSubjectServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public SetupSubjectServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		
+		response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		request.setCharacterEncoding("utf-8");
+		if(request.getParameter("par")!= null) { 
+			alterExistingCourse(request, response);
+		} else {			
+			createNewCourse(request, response);
+		}
+		response.sendRedirect(request.getContextPath() + "/subjects/");
+	}
+
+	private void createNewCourse(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		Connection con = null;
+		PreparedStatement ps = null;
+		//-----------------------------------------------------------------------------------------------
+		//							Create new DB Entry for table `Kurs`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "INSERT INTO Kurs (kuerzel, name, dozent_id) VALUES(?, ?, ?);"; 
+		String[] params = new String[]{request.getParameter("abb"), request.getParameter("title"), request.getSession().getAttribute("loggedInUserID").toString()};
+		try {con = ContextListener.getDataSource().getConnection();} catch(SQLException e) {response.sendError(503); return;}
+		try {
+			ps = DBSupport.getPreparedStatementFromSql(sql, params, con);
+			ps.execute();
+			DBSupport.close(ps);
+			//-----------------------------------------------------------------------------------------------
+			//						Create DB Entries for table `StudentRelKurs`
+			//-----------------------------------------------------------------------------------------------
+			String[] results = request.getParameterValues("names");
+			if(results != null) {
+				for(String result : results) {
+					sql = "INSERT INTO StudentRelKurs VALUES(?, (SELECT MAX(k_id) from Kurs WHERE name = ?))";
+					ps = DBSupport.getPreparedStatementFromSql(sql, new String[]{result, request.getParameter("title")}, con);
+					ps.execute();
+					DBSupport.close(ps);
+				}
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBSupport.close(con, ps);
+		}
+	}
+
+	private void alterExistingCourse(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		String par = request.getParameter("par");
+		Connection con = null;
+		PreparedStatement ps = null;
+		//-----------------------------------------------------------------------------------------------
+		//							Update DB Entry for table `Kurs`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "Update Kurs SET kuerzel = ?, name = ? WHERE k_id = ?;"; 
+		String[] params = new String[] {request.getParameter("abb"), request.getParameter("title"), par};
+		
+		try {con = ContextListener.getDataSource().getConnection();} catch(SQLException e) {response.sendError(503); return;}try {
+			ps = DBSupport.getPreparedStatementFromSql(sql, params, con);
+			ps.execute();
+			DBSupport.close(ps);	
+		
+		//-----------------------------------------------------------------------------------------------
+		//				Delete old DB Entries for table `StudentRelKurs` and create new ones
+		//-----------------------------------------------------------------------------------------------
+			sql = "DELETE FROM StudentRelKurs WHERE k_id = ?;";
+			ps = DBSupport.getPreparedStatementFromSql(sql, new String[]{par}, con);
+		
+			ps.execute();
+			DBSupport.close(ps);
+			
+			
+			String[] results = request.getParameterValues("names");
+			if(results != null) {
+				for(String result : results) {
+					sql = "INSERT INTO StudentRelKurs VALUES(?, ?)";
+					params = new String[]{result, par};
+					ps = DBSupport.getPreparedStatementFromSql(sql, params, con);
+					ps.execute();
+					DBSupport.close(ps);
+				}
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBSupport.close(con, ps);
+		}
+	}
+
+}

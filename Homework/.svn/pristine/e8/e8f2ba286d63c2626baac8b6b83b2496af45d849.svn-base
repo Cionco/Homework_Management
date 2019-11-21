@@ -1,0 +1,188 @@
+package de.fs.webarch.server.rest;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import de.fs.webarch.server.ContextListener;
+
+public class KursDao {
+
+public static KursDao instance = new KursDao();
+	
+	public List<Kurs> getKurse(int id) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		List<Kurs> result = new ArrayList<Kurs>();
+		String sql = "SELECT * "
+				+ "FROM Kurs "; //Arbeitgeber und Admin sehen alle Kurse
+		User u = UserDao.instance.getUserById(id);
+		if(u.getUg_id() == 1) sql += " WHERE k_id in (SELECT k_id from StudentRelKurs WHERE s_id = ?);";
+		else if(u.getUg_id() == 2) sql += " WHERE dozent_id = ?;";
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = con.prepareStatement(sql);
+			try { ps.setInt(1, id); } catch(SQLException e) {  } //Case that an employer is logged in so there is no ? to fill
+			rs = ps.executeQuery();
+			while(rs.next()) {
+				result.add(new Kurs(rs));
+			}
+			return result;
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			try { rs.close(); } catch(SQLException e) { e.printStackTrace(); }
+			try { ps.close(); } catch(SQLException e) { e.printStackTrace(); }
+			try { con.close(); } catch(SQLException e) { e.printStackTrace(); }
+		}
+	}
+	
+	public void storeKurs(Kurs k, ArrayList<Integer> teilnehmer) {
+		Connection con = null;
+		PreparedStatement ps = null;
+
+		//-----------------------------------------------------------------------------------------------
+		//							Create new DB Entry for table `Kurs`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "INSERT INTO Kurs (kuerzel, name, dozent_id) VALUES(?, ?, ?);"; 
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = con.prepareStatement(sql);
+			ps.setString(1, k.getKuerzel());
+			ps.setString(2, k.getName());
+			ps.setInt(3, k.getDozent_id());
+			ps.execute();
+			//-----------------------------------------------------------------------------------------------
+			//						Create DB Entries for table `StudentRelKurs`
+			//-----------------------------------------------------------------------------------------------
+			if(teilnehmer != null) {
+				for(int t : teilnehmer) {
+					sql = "INSERT INTO StudentRelKurs VALUES(?, (SELECT MAX(k_id) from Kurs WHERE name = ?))";
+					ps = con.prepareStatement(sql);
+					ps.setInt(1, t);
+					ps.setString(2, k.getName());
+					ps.execute();
+				}
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try { ps.close(); }catch(SQLException e) { e.printStackTrace(); }
+			try { con.close(); }catch(SQLException e) { e.printStackTrace(); }
+		}
+	}
+	
+	public void updateKurs(Kurs k, ArrayList<Integer> teilnehmer) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		//-----------------------------------------------------------------------------------------------
+		//							Update DB Entry for table `Kurs`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "Update Kurs SET kuerzel = ?, name = ? WHERE k_id = ?;";
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = con.prepareStatement(sql);
+			ps.setString(1, k.getKuerzel());
+			ps.setString(2, k.getName());
+			ps.setInt(3, k.getK_id());
+			ps.execute();
+			try { ps.close(); }catch(SQLException e) { e.printStackTrace(); }
+			
+			//-----------------------------------------------------------------------------------------------
+			//				Delete old DB Entries for table `StudentRelKurs` and create new ones
+			//-----------------------------------------------------------------------------------------------
+			sql = "DELETE FROM StudentRelKurs WHERE k_id = ?;";
+			ps = con.prepareStatement(sql);
+			ps.setInt(1, k.getK_id());
+			ps.execute();
+			try { ps.close(); }catch(SQLException e) { e.printStackTrace(); }
+			
+			if(teilnehmer != null) {
+				for(int t : teilnehmer) {
+					sql = "INSERT INTO StudentRelKurs VALUES(?, (SELECT MAX(k_id) from Kurs WHERE name = ?))";
+					ps = con.prepareStatement(sql);
+					ps.setInt(1, t);
+					ps.setString(2, k.getName());
+					ps.execute();
+				}
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try { ps.close(); }catch(SQLException e) { e.printStackTrace(); }
+			try { con.close(); }catch(SQLException e) { e.printStackTrace(); }
+		}
+	}
+	
+	public String getName(int k_id) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		String name = null;
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = con.prepareStatement("SELECT name FROM Kurs WHERE k_id = ?;");
+			ps.setInt(1, k_id);
+			rs = ps.executeQuery();
+			rs.next();
+			name = rs.getString(1);
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+		return name;
+	}
+	
+	public String[] getKursProperties(int k_id) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = con.prepareStatement("SELECT kuerzel, name FROM Kurs WHERE k_id = ?;");
+			ps.setInt(1, k_id);
+			rs  = ps.executeQuery();
+			rs.next();
+			return new String[] {rs.getString(1), rs.getString(2)};
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			try { rs.close(); }catch(SQLException e) { e.printStackTrace(); }
+			try { ps.close(); }catch(SQLException e) { e.printStackTrace(); }
+			try { con.close(); }catch(SQLException e) { e.printStackTrace(); }
+		}
+	}
+	
+	public Integer[] getKursTeilnehmer(int k_id) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		ArrayList<Integer> help = new ArrayList<Integer>();
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = con.prepareStatement("Select s_id FROM StudentRelKurs Where k_id = ? ORDER BY s_id");
+			ps.setInt(1, k_id);
+			rs = ps.executeQuery();
+			while(rs.next()) 
+				help.add(rs.getInt(1));
+			
+			Integer[] result = new Integer[help.size()];
+			for(int i = 0; i < help.size(); i++)
+				result[i] = help.get(i);
+			
+			return result;
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			try { rs.close(); }catch(SQLException e) { e.printStackTrace(); }
+			try { ps.close(); }catch(SQLException e) { e.printStackTrace(); }
+			try { con.close(); }catch(SQLException e) { e.printStackTrace(); }
+		}
+	}
+}

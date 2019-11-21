@@ -1,0 +1,18 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"%>
+<table><tr>
+<!--td><a href="status.jsp">Status</a> | </td>
+<td><a href="portallist.jsp">Portal Liste</a> | </td>
+<td><a href="rest/portals">Portal Liste (XML)</a> | </td>
+<td><a href="portal_form.jsp">Neues Portal</a> | </td-->
+<% String contextPath = request.getContextPath(); %>
+<td><a href="<%= contextPath %>/index.jsp">Zurück zur Startseite</a> | </td>
+<td><a href="<%= contextPath %>/subjects/">Kurse</a> | </td>
+<td><a href="<%= contextPath %>/Homework/">Hausaufgaben</a> | </td>
+<td><a href="<%= contextPath %>/LoginServlet">Logout: <%= session.getAttribute("loggedInUser") %></a></td>
+</tr></table>
+<% if(session.getAttribute("authenticated") != null && session.getAttribute("authenticated").equals(false) || session.getAttribute("authenticated") == null) { %>
+	<jsp:forward page="login.jsp">
+		<jsp:param name="reqcamefrom" value="<%= request.getRequestURL() %>"/>
+	</jsp:forward>
+<% } %>

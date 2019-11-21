@@ -1,0 +1,339 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import javax.servlet.http.HttpServletResponse;
+
+public class DBSupport {
+	
+	public static String[] getKursProperties(int k_id) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = getPreparedStatementFromSql("SELECT kuerzel, name FROM Kurs WHERE k_id = ?", new String[]{Integer.toString(k_id)}, con);
+			rs  = ps.executeQuery();
+			rs.next();
+			return new String[] {rs.getString(1), rs.getString(2)};
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			close(con, ps, rs);
+		}
+	}
+	
+	public static Integer[] getKursTeilnehmer(int k_id) {
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		ArrayList<Integer> help = new ArrayList<Integer>();
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = getPreparedStatementFromSql("Select s_id FROM StudentRelKurs Where k_id = ? ORDER BY s_id", new String[] {Integer.toString(k_id)}, con);
+			rs = ps.executeQuery();
+			while(rs.next()) 
+				help.add(rs.getInt(1));
+			
+			Integer[] result = new Integer[help.size()];
+			for(int i = 0; i < help.size(); i++)
+				result[i] = help.get(i);
+			
+			return result;
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			close(con, ps, rs);
+		}
+	}
+	
+	/**  
+	 * 
+	 * @return ArrayList of all names in the User table in the form "Lastname, Firstname"
+	 */
+	public static ArrayList<String> getNames() {
+		ArrayList<String> result;
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = DBSupport.getPreparedStatementFromSql("SELECT * FROM User WHERE ug_id = 1 ORDER BY u_id", new String[0], con);
+			rs = ps.executeQuery();
+			result = new ArrayList<>();
+			while(rs.next()) {
+				result.add(rs.getInt(1) + ", " + rs.getString(5) + ", " + rs.getString(4));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+			result = null;
+		} finally {
+			DBSupport.close(con, ps, rs);
+		}
+		return result;
+	}
+	
+	public static HashMap<Integer, String> getKurseWithId(int dozent_id) {
+		HashMap<Integer, String> result;
+		Connection con = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			ps = DBSupport.getPreparedStatementFromSql("SELECT k_id, Name FROM Kurs WHERE dozent_id = ?;", new String[]{Integer.toString(dozent_id)}, con);
+			rs = ps.executeQuery();
+			result = new HashMap<Integer, String>();
+			while(rs.next()) {
+				result.put(rs.getInt(1), rs.getString(2));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+			result = null;
+		} finally {
+			close(con, ps, rs);
+		}
+		return result;
+	}
+	
+	/**
+	 * 
+	 * @deprecated
+	 * Use getFirstInt(PreparedStatement) instead
+	 */
+	@Deprecated
+	public static int getFirstInt(String sql) {
+		ResultSet rs = ContextListener.executeQuery(sql);
+		try {
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return 0;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	public static int getFirstInt(PreparedStatement ps) {
+		ResultSet rs = null;
+		try {
+			rs = ps.executeQuery();
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return 0;
+		} finally {
+			close(ps, rs);
+		}
+		
+	}
+	
+	@Deprecated
+	public static int getFirstInt(String sql, boolean print) {
+		ResultSet rs = ContextListener.executeQuery(sql);
+
+		try {
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			if(print) e.printStackTrace();
+			return 0;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	public static int getAttempt(int h_id, int s_id, Connection con) {
+		String sql = "SELECT Attempt FROM Abgabe WHERE h_id = ? AND s_id = ? ORDER BY Attempt desc;";
+		String[] params = new String[] {Integer.toString(h_id), Integer.toString(s_id)};
+		int attempt = getFirstInt(getPreparedStatementFromSql(sql, params, con));
+		
+		return attempt + 1;
+	}
+	
+	public static <T> boolean contains(T[] array, T value) {
+		for(T each : array) 
+			if(each.equals(value)) return true;
+		return false;
+	}
+	
+	
+	/**
+	 * 
+	 * @param url
+	 * @param par 0: Username 1: User ID 2: Usergroup 3+: Others
+	 * @return
+	 */
+	public static PreparedStatement getPreparedStatement(String url, String[] params, Connection con) {
+		boolean   student = params[2].equals("1")
+				, lecturer = params[2].equals("2")
+				, employer = params[2].equals("3")
+				, admin = params[2].equals("4");
+		PreparedStatement result = null;
+		String sql = "";
+		
+		if(url.equals("/Homework/index.jsp")) {
+			if(!(employer || admin)) {
+				sql = 	"SELECT h.h_id, Titel, Beschreibung, AbgabeTermin, name, Open" + (student?", Punkte, a_id":"")
+						+ 	" FROM Hausaufgabe as h INNER JOIN Kurs as k on h.k_id = k.k_id" 
+						+ 	(student?" LEFT JOIN Abgabe as a on h.h_id = a.h_id AND a.s_id = ?":"") 							//Studenten wollen ihre eigenen Abgaben und Hausaufgaben sehen
+						+ 	" WHERE h.k_id in (SELECT k_id from "
+						+	(student?"StudentRelKurs as s INNER JOIN User as u On s.s_id":"Kurs as k INNER JOIN User as u on k.dozent_id") //Studenten wollen die Hausaufgaben sehen, die ihren Kursen zugeordnet sind, Dozenten die Kurse, die sie selbst halten
+						+ 		" = u.u_id WHERE u_name = ?) "
+						+	(student?"AND (a.attempt = (SELECT MAX(a.attempt) FROM Abgabe AS a WHERE a.h_id = h.h_id AND s_id = ? GROUP BY h.h_id) OR a.attempt IS NULL);":";"); //Studenten wollen jede Hausaufgabe nur einmal in der Liste sehen - ohne diesen Teil kann bei mehreren oder keiner Abgabe eine Hausaufgabe aus der Liste ausgelassen werden
+				result = prepareStatement(sql, con);
+				try {
+					
+					if(student) {
+						result.setInt(1, Integer.parseInt(params[1]));
+						result.setString(2, params[0]);
+						result.setInt(3, Integer.parseInt(params[1]));
+					} else result.setString(1, params[0]);
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			} else {
+				sql = "SELECT h_id, Titel, Beschreibung, AbgabeTermin, name, Open FROM Hausaufgabe as h INNER JOIN Kurs as k on h.k_id = k.k_id;";
+				result = prepareStatement(sql, con);
+			}
+			
+		} else if(url.equals("/Homework/Assess/index.jsp")) {
+			
+			sql = "SELECT a.a_id, u.first_name, u.last_name, a.Attempt, a.Punkte, h.titel "
+				+	"FROM Hausaufgabe as h "
+				+	"INNER JOIN StudentRelKurs AS sk ON h.k_id = sk.k_id "
+				+	"INNER JOIN User AS u ON sk.s_id = u.u_id "
+				+	"LEFT JOIN Abgabe AS a ON u.u_id = a.s_id AND a.h_id = h.h_id "
+				+	"WHERE h.k_id = (SELECT k_id FROM Hausaufgabe WHERE h_id = ?) "
+				+	"AND (a.attempt = ("
+				+		"SELECT MAX(a.attempt) FROM Abgabe AS a WHERE h_id = ? AND s_id = u.u_id GROUP BY u.u_id) "
+				+	"OR a.attempt IS NULL);";
+			result = prepareStatement(sql, con);
+			try {
+				result.setInt(1, Integer.parseInt(params[3]));
+				result.setInt(2, Integer.parseInt(params[3]));
+			} catch(SQLException e) {
+				e.printStackTrace();
+			}
+		} else if(url.equals("/Homework/Assess/bewerten.jsp")) {
+			sql = "SELECT Loesung, Anmerkung, Punkte, h_id FROM Abgabe WHERE a_id = ?;";
+			result = prepareStatement(sql, con);
+			try {
+				result.setInt(1, Integer.parseInt(params[3]));
+			} catch(SQLException e) {
+				e.printStackTrace();
+			}
+		} else if(url.equals("/subjects/index.jsp")) {
+			sql = "SELECT k_id, kuerzel, name, u_name, first_name, last_name "
+				+ "FROM Kurs as k INNER JOIN User as u on k.dozent_id = u.u_id" //Arbeitgeber und Admin sehen alle Kurse
+				+ (student?" WHERE k_id in (SELECT k_id from StudentRelKurs as s INNER JOIN User as u On s.s_id = u.u_id WHERE u.u_name = ?);" //Studenten wollen nur die Kurse sehen, denen sie zugeordnet sind
+				 :(lecturer?" WHERE k.dozent_id = ?;":";")); //Dozenten sehen alle Kurse, die sie selbst anbieten
+			
+			result = prepareStatement(sql, con);
+			try {
+				if(student) {
+					result.setString(1, params[0]);
+				} else result.setInt(1, Integer.parseInt(params[1]));
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+
+		}
+		System.out.println("Returning Prepared Statement: " + result.toString());
+		return result;
+		
+	}
+	
+	public static PreparedStatement getPreparedStatementFromSql(String sql, String[] params, Connection con) {
+		
+		PreparedStatement result = null;
+		try {
+			result = prepareStatement(sql, con);
+			for(int i = 0; i < params.length; i++) {
+				result.setString(i + 1, params[i]);
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+		System.out.println("Returning Prepared Statement: " + result.toString());
+		return result;
+	}
+	
+	public static PreparedStatement prepareStatement(String sql, Connection con) {
+		try {			
+			return con.prepareStatement(sql);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	public static int getUsergroup(String username, Connection con) {
+		PreparedStatement ps = getPreparedStatementFromSql("SELECT ug_id FROM User WHERE u_name = ?;", new String[] {username}, con);
+		ResultSet rs = null;
+		try {
+			rs = ps.executeQuery();
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			return 0;
+		} finally {
+			close(ps, rs);
+		}
+	}
+	
+	public static int getUserId(String username, Connection con) {
+		PreparedStatement ps = getPreparedStatementFromSql("SELECT u_id FROM User WHERE u_name = ?;", new String[] {username}, con);
+		ResultSet rs = null;
+		try {
+			rs = ps.executeQuery();
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			return 0;
+		} finally {
+			DBSupport.close(ps, rs);
+		}
+	}
+	
+	public static void close(Connection con) {
+		try { con.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+	}
+
+	public static void close(PreparedStatement ps) {
+		try { ps.close(); } catch(SQLException e) { e.printStackTrace(); 	} catch(NullPointerException e) {}
+	}
+	
+	public static void close(Connection con, PreparedStatement ps) {
+		try { ps.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+		try { con.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+	}
+	
+	public static void close(PreparedStatement ps, ResultSet rs) {
+		try { rs.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+		try { ps.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+	}
+	
+	public static void close(Connection con, PreparedStatement ps, ResultSet rs) {
+		try { rs.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+		try { ps.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+		try { con.close(); } catch(SQLException e) { e.printStackTrace(); } catch(NullPointerException e) {}
+	}
+}
+

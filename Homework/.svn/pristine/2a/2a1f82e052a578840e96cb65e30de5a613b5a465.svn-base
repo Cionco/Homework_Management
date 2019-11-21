@@ -1,0 +1,47 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"
+    import="java.sql.*"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+
+	
+	<p>Meine Hausaufgaben</p>
+	<% boolean authorized = session.getAttribute("usergroup").toString().equals("2") || session.getAttribute("usergroup").toString().equals("4"); %>
+	<% boolean student = session.getAttribute("usergroup").toString().equals("1"); %>
+	   
+	<table border="1">
+		<tr>
+			<th>Titel</th>
+			<th>Beschreibung</th>
+			<th>Abgabe</th>
+			<th>Kurs</th>
+		</tr>
+	<% String sql = "SELECT h_id, Titel, Beschreibung, AbgabeTermin, name, Open FROM Hausaufgabe as h INNER JOIN Kurs as k on h.k_id = k.k_id" + 
+			" WHERE h.k_id in (SELECT k_id from "+ 
+			(student?"StudentRelKurs as s INNER JOIN User as u On s.s_id"
+				    :"Kurs as k inner join user as u on k.dozent_id") + " = u.u_id WHERE u_name = '" + session.getAttribute("loggedInUser") + "');";
+
+		ResultSet rs = ContextListener.executeQuery(sql);
+		while(rs.next()) { %>
+		<tr>
+			<td><%= rs.getString(2) %></td>
+			<td><%= rs.getString(3) %></td>
+			<td><%= rs.getDate(4) %></td>
+			<td><%= rs.getString(5) %></td>
+			<% if(authorized) { %><td><a href="NewHomeworkServlet?par=<%= rs.getInt(1) %>"><%= rs.getInt(6)==1?"Sperren":"Öffnen" %></a></td><% } %>
+		</tr>
+		<% }  rs.close(); %>
+		<% if(authorized) { %>
+			<td colspan=3 align=center><a href="new.jsp">Neue Hausaufgabe</a></td>
+		<% } %>
+	</table>
+	
+
+
+</body>
+</html>

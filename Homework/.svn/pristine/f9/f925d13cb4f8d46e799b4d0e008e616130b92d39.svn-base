@@ -1,0 +1,78 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Servlet implementation class NewHomeworkServlet
+ */
+public class NewHomeworkServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public NewHomeworkServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {	
+		Connection con = null;
+		PreparedStatement ps = null;
+		try {con = ContextListener.getDataSource().getConnection();} catch(SQLException e) {response.sendError(503); return;}
+		try {
+			
+			//-----------------------------------------------------------------------------------------------
+			//						Flip Locked Bit for handing in Homework
+			//-----------------------------------------------------------------------------------------------
+			int open = DBSupport.getFirstInt(DBSupport.getPreparedStatementFromSql("SELECT Open FROM Hausaufgabe WHERE h_id = ?;", new String[] {request.getParameter("par")}, con));
+			open = open ^ 1;
+			ps = DBSupport.getPreparedStatementFromSql("UPDATE Hausaufgabe SET Open = ? WHERE h_id = ?;", new String[]{Integer.toString(open), request.getParameter("par")}, con);
+			ps.executeUpdate();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBSupport.close(con, ps);
+		}
+		
+		response.sendRedirect(request.getContextPath() + "/Homework/");
+		
+		//response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		Connection con = null;
+		PreparedStatement ps = null;
+		//-----------------------------------------------------------------------------------------------
+		//						Create DB Entry for table `Hausaufgabe`
+		//-----------------------------------------------------------------------------------------------
+		String sql = "INSERT INTO Hausaufgabe(Titel, Beschreibung, AbgabeTermin, Open, k_id) VALUES(?, ?, ?, ?, ?);";
+		String[] params = new String[] {request.getParameter("title"), request.getParameter("beschreibung"), request.getParameter("Abgabedatum"), ((request.getParameter("locked") == null)?"1":"0"), request.getParameter("kurs")};
+		try {con = ContextListener.getDataSource().getConnection();} catch(SQLException e) {response.sendError(503); return;}
+		try {
+			ps = DBSupport.getPreparedStatementFromSql(sql, params, con);
+			ps.execute();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBSupport.close(con, ps);
+		}
+		
+		response.sendRedirect(request.getContextPath() + "/Homework/");
+	}
+
+}

@@ -1,0 +1,65 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"
+    import="java.sql.*" import="java.util.Date"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<jsp:include page="navbar.jsp"/>
+	
+	<p>Meine Hausaufgaben</p>
+	<% if(session.getAttribute("usergroup") == null) return; %>
+	<% boolean admin = session.getAttribute("usergroup").toString().equals("4"); %>
+	<% boolean authorized = session.getAttribute("usergroup").toString().equals("2") || session.getAttribute("usergroup").toString().equals("4"); %>
+	<% boolean employer = session.getAttribute("usergroup").toString().equals("3"); %>
+	<% boolean student = session.getAttribute("usergroup").toString().equals("1"); %>
+	   
+	<% String sql = "SELECT h.h_id, Titel, Beschreibung, AbgabeTermin, name, Open" + (student?", Punkte, a_id":"") + " FROM Hausaufgabe as h INNER JOIN Kurs as k on h.k_id = k.k_id" +
+			(student?" LEFT JOIN Abgabe as a on h.h_id = a.h_id AND a.s_id = " + session.getAttribute("loggedInUserID"):"") + 
+			" WHERE h.k_id in (SELECT k_id from "+ 
+			(student?"StudentRelKurs as s INNER JOIN User as u On s.s_id"
+				    :"Kurs as k inner join user as u on k.dozent_id") + " = u.u_id WHERE u_name = '" + session.getAttribute("loggedInUser") + "') "+
+			(student?"AND (a.attempt = (SELECT MAX(a.attempt) FROM Abgabe AS a WHERE a.h_id = h.h_id AND s_id = " + session.getAttribute("loggedInUserID") + " GROUP BY h.h_id) OR a.attempt IS NULL);":";");
+		if(employer) sql = "SELECT h_id, Titel, Beschreibung, AbgabeTermin, name, Open FROM Hausaufgabe as h INNER JOIN Kurs as k on h.k_id = k.k_id;";
+		if(admin) sql = "SELECT h_id, Titel, Beschreibung, AbgabeTermin, name, Open FROM Hausaufgabe as h INNER JOIN Kurs as k on h.k_id = k.k_id;";
+		ResultSet rs = ContextListener.executeQuery(sql);
+		boolean bewertet = false;
+		if(student) {
+			while(rs.next()) if(rs.getInt(7) != 0) bewertet = true;
+			rs.beforeFirst();
+		}%>
+		
+	<table border="1">
+		<tr>
+			<th>Titel</th>
+			<th>Beschreibung</th>
+			<th>Abgabe</th>
+			<th>Kurs</th>
+			<% if(bewertet) { %><th>Punkte</th> <% } %>
+		</tr>
+		<%
+		while(rs.next()) { %>
+		<% boolean thisbewertet = false; if(rs.getInt(7) != 0) thisbewertet = true; %>
+		<tr>
+			<td><%= rs.getString(2) %></td>
+			<td><%= rs.getString(3) %></td>
+			<td><%= rs.getDate(4) %></td>
+			<td><%= rs.getString(5) %></td>
+			<% if(student && thisbewertet) { if(rs.getInt(7) != 0) {%><td><a href="Assess/bewerten.jsp?par=<%= rs.getInt(8) %>"><%= rs.getInt(7) %></a></td><% } else { %><td></td><% }} %>
+			<% if(authorized) { %><td><a href="NewHomeworkServlet?par=<%= rs.getInt(1) %>"><%= rs.getInt(6)==1?"Sperren":"Öffnen" %></a></td><td><a href="Assess/index.jsp?par=<%= rs.getInt(1) %>">Bewerten</a></td>
+			<% } else if(employer) { %><td><%= rs.getInt(6)==1?"Offen":"Gesperrt" %></td><td><a href="Assess/index.jsp?par=<%= rs.getInt(1) %>">Ansehen</a></td>
+			<% } else if(student && rs.getInt(6) == 1 && rs.getDate(4).after(new Date()) && !thisbewertet) { %><%= bewertet?"<td></td>":"" %><td><a href="abgabe.jsp?par=<%= rs.getInt(1)%>">Abgeben</a></td><% } %>
+		</tr>
+		<% }  rs.close(); %>
+		<% if(authorized) { %>
+			<td colspan=3 align=center><a href="new.jsp">Neue Hausaufgabe</a></td>
+		<% } %>
+	</table>
+	
+
+
+</body>
+</html>

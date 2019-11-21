@@ -1,0 +1,55 @@
+<taglib>
+	<tlib-version>1.0</tlib-version>
+	<jsp-version>2.0</jsp-version>
+	<short-name>Setup TLD</short-name>
+	
+	<tag>
+		<name>participants</name>
+		<tag-class>de.fs.webarch.server.tag.ParticipantsTag</tag-class>
+		<body-content>empty</body-content>
+		
+		<attribute>
+			<name>newcourse</name>
+			<required>true</required>
+			<type>java.util.Boolean</type>
+			<fragment>true</fragment>
+		</attribute>
+		<attribute>
+			<name>courseid</name>
+			<required>false</required>
+			<type>java.util.Integer</type>
+			<fragment>true</fragment>
+		</attribute>
+		<attribute>
+			<name>editable</name>
+			<required>false</required>
+			<type>java.util.Boolean</type>
+			<fragment>true</fragment>
+		</attribute>
+	</tag>
+	
+	<tag>
+		<name>header</name>
+		<tag-class>de.fs.webarch.server.tag.HeaderTag</tag-class>
+		<body-content>empty</body-content>
+		
+		<attribute>
+			<name>newcourse</name>
+			<required>true</required>
+			<type>java.util.Boolean</type>
+			<fragment>true</fragment>
+		</attribute>
+		<attribute>
+			<name>courseid</name>
+			<required>false</required>
+			<type>java.util.Integer</type>
+			<fragment>true</fragment>
+		</attribute>
+		<attribute>
+			<name>editable</name>
+			<required>false</required>
+			<type>java.util.Boolean</type>
+			<fragment>true</fragment>
+		</attribute>
+	</tag>
+</taglib>

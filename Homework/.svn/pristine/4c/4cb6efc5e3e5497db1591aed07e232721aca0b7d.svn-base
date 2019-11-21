@@ -1,0 +1,75 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="java.sql.*"
+    import="de.fs.webarch.server.*"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<jsp:include page="navbar.jsp" />
+	
+	<% if(request.getParameter("par") == null) { %> <jsp:forward page=".."/> <% } %>
+	<% if(session.getAttribute("usergroup") == null) return; %>
+	<% boolean lecturer = session.getAttribute("usergroup").toString().equals("2"); %>
+	<% boolean employer = session.getAttribute("usergroup").toString().equals("3"); %>
+	<% int h_id = Integer.parseInt(request.getParameter("par").toString()); %>
+	<% String[] paramArray = new String[]{session.getAttribute("loggedInUser").toString(), session.getAttribute("loggedInUserID").toString(), session.getAttribute("usergroup").toString(), Integer.toString(h_id)}; %>
+	
+	<% /*String sql = "SELECT a.a_id, u.first_name, u.last_name, a.Attempt, a.Punkte, h.titel FROM ((((USER as u "
+					+ "INNER JOIN StudentRelKurs as sk ON u.u_id = sk.s_id) "
+					+ "INNER JOIN Kurs as k ON sk.k_id = k.k_id) "
+					+ "LEFT JOIN Abgabe AS a on a.s_id = u.u_id) "
+					+ "LEFT JOIN Hausaufgabe as h on h.h_id = a.h_id) "
+					+ "WHERE k.k_id = ("
+					+	"SELECT k_id FROM Hausaufgabe WHERE h_id = " + h_id + ") "
+					+ "AND (a.attempt = ("
+					+   "SELECT MAX(a.Attempt) FROM Abgabe as a WHERE h_id = " + h_id + " AND s_id = u.u_id GROUP BY u.u_id) "
+					+ "OR a.attempt IS NULL);";*/
+		/*String sql = "SELECT a.a_id, u.first_name, u.last_name, a.Attempt, a.Punkte, h.titel FROM Abgabe as a "
+				+	"INNER JOIN Hausaufgabe as h on a.h_id = h.h_id "
+				+	"RIGHT JOIN Kurs as k on h.k_id = k.k_id "
+				+	"INNER JOIN StudentRelKurs as sk on k.k_id = sk.k_id "
+				+	"INNER JOIN User as u on sk.s_id = u.u_id "
+				+	"WHERE k.k_id = (SELECT k_id FROM Hausaufgabe WHERE h_id = " + h_id + ") "
+				+	"AND (a.attempt = ("
+				+	"	SELECT MAX(a.Attempt) FROM Abgabe as a WHERE h_id = " + h_id + " and s_id = u.u_id GROUP BY u.u_id) "
+				+	"OR a.attempt is null);";*/
+				
+		/*String sql = "SELECT a.a_id, u.first_name, u.last_name, a.Attempt, a.Punkte, h.titel "
+				+	"FROM Hausaufgabe as h "
+				+	"INNER JOIN Kurs AS k ON h.k_id = k.k_id "
+				+	"INNER JOIN StudentRelKurs AS sk ON k.k_id = sk.k_id "
+				+	"INNER JOIN User AS u ON sk.s_id = u.u_id "
+				+	"LEFT JOIN Abgabe AS a ON u.u_id = a.s_id "
+				+	"WHERE k.k_id = (SELECT k_id FROM Hausaufgabe WHERE h_id = " + h_id + ") "
+				+	"AND (a.attempt = ("
+				+		"SELECT MAX(a.attempt) FROM Abgabe AS a WHERE h_id = " + h_id + " AND s_id = u.u_id GROUP BY u.u_id) "
+				+	"OR a.attempt IS NULL);";*/
+		
+		PreparedStatement ps = DBSupport.getPreparedStatement("/Homework/Assess/index.jsp", paramArray, (Connection)session.getAttribute("connection"));
+		ResultSet rs = ps.executeQuery();
+		rs.next();
+	%>
+	<h4><%= (rs.getString(6)==null)?"":rs.getString(6) %></h4>
+	
+	<table border>
+		<tr>
+			<th>Student</th>
+			<th>Abgegeben</th>
+			<th>Punkte</th>
+		</tr>
+		<% rs.beforeFirst();
+		while(rs.next()) { %>
+		<tr>
+			<td><%= rs.getString(2) + " " + rs.getString(3) %></td>
+			<td><%= (rs.getInt(4)!=0)?"Ja":"Nein" %></td>
+			<td><%= rs.getInt(5) %></td>
+			<% if(rs.getInt(4)!=0) { %><td><a href="bewerten.jsp?par=<%= rs.getInt(1) %>"><%= lecturer?"Bewerten":"Lesen" %></a></td><% } %>
+		</tr>
+		<% } %>
+		<% rs.close(); ps.close(); %>
+	</table>
+</body>
+</html>

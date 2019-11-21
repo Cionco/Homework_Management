@@ -1,0 +1,32 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="java.sql.*" import="de.fs.webarch.server.*"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+	<jsp:include page="navbar.jsp"/>
+	<% if(session.getAttribute("usergroup") == null) return; %>
+	<% boolean lecturer = session.getAttribute("usergroup").toString().equals("2"); %>
+	<% boolean student = session.getAttribute("usergroup").toString().equals("1"); %>
+	<% if(request.getParameter("par") == null) %><jsp:forward page=".." />
+	<% String[] paramArray = new String[]{session.getAttribute("loggedInUser").toString(), session.getAttribute("loggedInUserID").toString(), session.getAttribute("usergroup").toString(), request.getParameter("par")}; %>
+
+	<%	Connection con = ContextListener.getDataSource().getConnection();
+		PreparedStatement ps = DBSupport.getPreparedStatement("/Homework/Assess/bewerten.jsp", paramArray, con);
+		ResultSet rs = ps.executeQuery(); rs.next(); %>
+	
+	<div><textarea rows="20" cols="50" readonly><%= rs.getString(1) %></textarea></div>
+	<form action="AssessServlet" method="post">
+		<textarea rows="20" cols="50" placeholder="Kommentare" name="comments" <%= lecturer?"":"readonly" %>><%= rs.getString(2)==null?"":rs.getString(2) %></textarea>
+		<input type="hidden" name="id" value="<%= request.getParameter("par") %>">
+		<div><input type="number" placeholder="Punktzahl" name="score" value="<%= rs.getInt(3) %>" <%= lecturer?"":"readonly" %>></div>	
+		<% if(lecturer) { %><div><input type="submit" value="Bewerten"></div>
+		<% } else if(student) { %><div><a href="../">Zurück</a></div> 
+		<% } else { %><div><a href="../Assess/index.jsp?par=<%= rs.getInt(4) %>">Zurück</a></div><% } %>
+		<% DBSupport.close(con, ps, rs); %>
+	</form>
+</body>
+</html>

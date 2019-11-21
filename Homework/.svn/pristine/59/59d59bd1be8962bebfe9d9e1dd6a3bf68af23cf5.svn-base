@@ -1,0 +1,23 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8" import="de.fs.webarch.server.*"
+    import="java.sql.*"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Hausaufgabe abgeben</title>
+</head>
+<body>
+	<% Connection con = ContextListener.getDataSource().getConnection(); %>
+	<% if(request.getParameter("par") == null) { %> <jsp:forward page="index.jsp" /> <% } %>
+	<jsp:include page="navbar.jsp"/>
+	<h1>Bitte Geben Sie Ihren Lösungstext ein</h1>
+	<h2>Dies ist ihre <%= DBSupport.getAttempt(Integer.parseInt(request.getParameter("par")), (int)session.getAttribute("loggedInUserID"), con) %>. Abgabe</h2>
+	<form action="UploadHomeworkServlet" method="post">
+		<textarea name="loesung" rows=30 cols=200></textarea>	
+		<input type="hidden" name="h_id" value="<%= request.getParameter("par") %>">
+		<input type="submit" value="Abgeben"> 
+	</form>
+	<% DBSupport.close(con); %>
+</body>
+</html>

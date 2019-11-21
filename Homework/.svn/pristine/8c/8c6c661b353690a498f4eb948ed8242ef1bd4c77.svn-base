@@ -1,0 +1,83 @@
+package de.fs.webarch.server;
+
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Properties;
+
+import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
+import javax.servlet.annotation.WebListener;
+
+/**
+ * Application Lifecycle Listener implementation class DbPmPlusContextListener
+ *
+ */
+@WebListener
+public class ContextListener implements ServletContextListener {
+
+	private static Properties passwords=new Properties();
+
+	/**
+	 * Default constructor. 
+	 */
+	public ContextListener() {
+	}
+
+	/**
+	 * @see ServletContextListener#contextDestroyed(ServletContextEvent)
+	 */
+	public void contextDestroyed(ServletContextEvent arg0)  { 
+		System.out.println("und tschuess...");
+	}
+
+	/**
+	 * @see ServletContextListener#contextInitialized(ServletContextEvent)
+	 */
+	public void contextInitialized(ServletContextEvent event)  { 
+		System.getProperties().setProperty("Dorg.apache.cxf.stax.allowInsecureParser", "1");
+		System.out.println("sys prop set");
+
+		ServletContext servletContext = event.getServletContext();
+		passwords= readPasswordFile(servletContext);
+	}
+
+	public static Properties readPasswordFile(ServletContext servletContext) {
+		if(passwords!=null && passwords.size()>0) return passwords; // keep Listener class from being GCed
+		
+		Properties props=new Properties();
+		FileReader reader =null;
+		try {
+			String contextPasswdParam=servletContext.getInitParameter("passwordfile");
+			reader = new FileReader(contextPasswdParam);
+			props.load(reader);
+			System.out.println("Passwords read successfully "+contextPasswdParam);
+		} catch(Exception e) {
+			e.printStackTrace();
+			if(reader!=null)
+				try {
+					reader.close();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+		}
+		return props;
+	}
+
+
+	public static boolean isUserAuthentic(String username, String passwordFromForm) {
+		String realPwd=passwords.getProperty(username,null);
+
+		if(passwordFromForm!=null && passwordFromForm.equals(realPwd)) {
+			return true;
+		}
+
+		return false;
+
+	}
+
+	public static boolean isUserAuthentic(ServletContext servletContext, String username, String passwordFromForm) {
+		passwords=readPasswordFile(servletContext);
+		return isUserAuthentic(username, passwordFromForm);
+	}
+}

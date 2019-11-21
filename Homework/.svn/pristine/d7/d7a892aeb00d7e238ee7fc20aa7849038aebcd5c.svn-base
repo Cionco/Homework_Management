@@ -1,0 +1,61 @@
+package de.fs.webarch.server;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * Servlet implementation class UploadHomeworkServlet
+ */
+public class UploadHomeworkServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public UploadHomeworkServlet() {
+        super();
+    }
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		response.getWriter().append("Served at: ").append(request.getContextPath());
+	}
+
+	/**
+	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		Connection con = null;
+		//-----------------------------------------------------------------------------------------------
+		//						Create DB Entry for table `Abgabe`
+		//-----------------------------------------------------------------------------------------------
+		int s_id = (int) request.getSession().getAttribute("loggedInUserID");
+		int h_id = Integer.parseInt(request.getParameter("h_id"));
+		String sql = "INSERT INTO Abgabe (s_id, h_id, Attempt, Loesung) VALUES(?, ?, ?, ?);";
+		PreparedStatement ps = null;
+		
+		try {
+			con = ContextListener.getDataSource().getConnection();
+			String[] params = new String[]{Integer.toString(s_id), Integer.toString(h_id), Integer.toString(DBSupport.getAttempt(h_id, s_id, con)), request.getParameter("loesung")};
+			ps = DBSupport.getPreparedStatementFromSql(sql, params, con);
+			ps.execute();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBSupport.close(con, ps);
+		}
+		
+		response.sendRedirect("index.jsp");
+		
+	}
+
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Context>
+
+    <!-- Default set of monitored resources -->
+    <WatchedResource>WEB-INF/web.xml</WatchedResource>
+    
+    <Parameter name="hostname" value="Nicolas MacBook Pro"
+         override="false"/>
+         
+     <Parameter name="aws.s3.accessKey" value="AKIAISUYSBBBNV7I6YLA" override="false"/>
+     <Parameter name="aws.s3.secretKey" value="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" override="false"/>
+         
+    <Resource
+		name="jdbc/HomeworkDebug"
+		auth="Container"
+		type="javax.sql.DataSource"
+		driverClassName="com.mysql.cj.jdbc.Driver"
+		url="jdbc:mysql://localhost:3306/homework"
+		username="root"
+		password=""
+		maxActive="15"
+		maxIdle="3"
+		
+		validationQuery="/* ping */"
+		testOnBorrow="true"
+		testWhileIdle="true"
+		timeBetweenEvictionRunsMillis="10000"
+		minEvictableIdleTimeMillis="60000"
+		
+		maxWait="-1" />
+		
+	<Resource
+		name="jdbc/Homework"
+		auth="Container"
+		type="javax.sql.DataSource"
+		factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+		driverClassName="com.mysql.cj.jdbc.Driver"
+		url="jdbc:mysql://homework.ccnbcymlbil8.eu-central-1.rds.amazonaws.com:3306/Homework"
+		username="hwuser"
+		password="oSL-87e-4t6-J92"
+		maxActive="50"
+		maxIdle="3"
+		
+		validationQuery="/* ping */"
+		testOnBorrow="true"
+		testWhileIdle="true"
+		timeBetweenEvictionRunsMillis="10000"
+		minEvictableIdleTimeMillis="60000"
+		
+		maxWait="-1"	/>
+
+</Context>

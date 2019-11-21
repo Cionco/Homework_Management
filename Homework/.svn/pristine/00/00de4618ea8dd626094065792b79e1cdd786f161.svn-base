@@ -1,0 +1,13 @@
+package de.fs.webarch.server;
+
+public class LoginBean implements java.io.Serializable {
+
+	private static final long serialVersionUID = 2L;
+	
+	private String username = "nicolaskepper";
+	private String password = "nk123";
+	
+	public String getUsername() { return username; }
+	public String getpassword() { return password; }
+	
+}

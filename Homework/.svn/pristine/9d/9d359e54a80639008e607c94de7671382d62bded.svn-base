@@ -1,0 +1,149 @@
+package de.fs.webarch.server;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+public class DBSupport {
+
+	public static String[] getKursProperties(int k_id) {
+		ResultSet rs = ContextListener.executeQuery("SELECT kuerzel, name FROM Kurs WHERE k_id = " + k_id);
+		try {
+			rs.next();
+			return new String[] {rs.getString(1), rs.getString(2)};
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public static Integer[] getKursTeilnehmer(int k_id) {
+		ResultSet rs = ContextListener.executeQuery("Select s_id FROM StudentRelKurs Where k_id = " + k_id + " ORDER BY s_id");
+		ArrayList<Integer> help = new ArrayList<Integer>();
+		try {
+			while(rs.next()) 
+				help.add(rs.getInt(1));
+			
+			Integer[] result = new Integer[help.size()];
+			for(int i = 0; i < help.size(); i++)
+				result[i] = help.get(i);
+			
+			return result;
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return null;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	/**  
+	 * 
+	 * @return ArrayList of all names in the User table in the form "Lastname, Firstname"
+	 */
+	public static ArrayList<String> getNames() {
+		ArrayList<String> result;
+		ResultSet rs = null;
+		try {
+			rs = ContextListener.executeQuery("SELECT * FROM User WHERE ug_id = 1 ORDER BY u_id");
+			result = new ArrayList<>();
+			while(rs.next()) {
+				result.add(rs.getInt(1) + ", " + rs.getString(5) + ", " + rs.getString(4));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+			result = null;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+	}
+	
+	public static HashMap<Integer, String> getKurseWithId(int dozent_id) {
+		HashMap<Integer, String> result;
+		ResultSet rs = null;
+		try {
+			 rs = ContextListener.executeQuery("SELECT k_id, name FROM Kurs WHERE dozent_id = "
+					+ dozent_id + ";");
+			result = new HashMap<Integer, String>();
+			while(rs.next()) {
+				result.put(rs.getInt(1), rs.getString(2));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+			result = null;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		return result;
+	}
+	
+	public static int getFirstInt(String sql) {
+		ResultSet rs = ContextListener.executeQuery(sql);
+		try {
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			e.printStackTrace();
+			return 0;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	public static int getFirstInt(String sql, boolean print) {
+		ResultSet rs = ContextListener.executeQuery(sql);
+
+		try {
+			rs.next();
+			return rs.getInt(1);
+		} catch(SQLException e) {
+			if(print) e.printStackTrace();
+			return 0;
+		} finally {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	public static int getAttempt(int h_id, int s_id) {
+		String sql = "SELECT Attempt FROM Abgabe WHERE h_id = " + h_id + " AND s_id = " + s_id + " ORDER BY Attempt desc;";
+		int attempt = getFirstInt(sql, false);
+		
+		return attempt + 1;
+	}
+	
+	public static <T> boolean contains(T[] array, T value) {
+		for(T each : array) 
+			if(each.equals(value)) return true;
+		return false;
+	}
+}
