@@ -8,8 +8,8 @@
     <Parameter name="hostname" value="Nicolas MacBook Pro"
          override="false"/>
          
-     <Parameter name="aws.s3.accessKey" value="AKIAISUYSBBBNV7I6YLA" override="false"/>
-     <Parameter name="aws.s3.secretKey" value="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" override="false"/>
+     <Parameter name="aws.s3.accessKey" value="****************" override="false"/>
+     <Parameter name="aws.s3.secretKey" value="****************" override="false"/>
          
     <Resource
 		name="jdbc/HomeworkDebug"
@@ -36,9 +36,9 @@
 		type="javax.sql.DataSource"
 		factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
 		driverClassName="com.mysql.cj.jdbc.Driver"
-		url="jdbc:mysql://homework.ccnbcymlbil8.eu-central-1.rds.amazonaws.com:3306/Homework"
+		url="jdbc:mysql://*******.rds.amazonaws.com:3306/Homework"
 		username="hwuser"
-		password="oSL-87e-4t6-J92"
+		password="***************"
 		maxActive="50"
 		maxIdle="3"
 		
